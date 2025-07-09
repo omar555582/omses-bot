@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { status } = require('minecraft-server-util');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 const javaHost = 'OmscMc.aternos.me';
@@ -11,21 +11,14 @@ const javaPort = 25565;
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  updateStatus();
-  setInterval(updateStatus, 60 * 1000);
 });
 
-async function updateStatus() {
-  client.guilds.cache.forEach(async (guild) => {
-    const textChannels = guild.channels.cache.filter(
-      (channel) =>
-        channel.isTextBased() &&
-        channel.permissionsFor(client.user).has('SendMessages')
-    );
-
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+  
+  if (message.content.toLowerCase() === 'mc') {
     try {
       const result = await status(javaHost, javaPort);
-
       const embed = {
         color: 0x00ff00,
         title: '🎮 OmscMc',
@@ -33,17 +26,14 @@ async function updateStatus() {
           '`Java IP:` `OmscMc.aternos.me`',
           '`Bedrock IP:` `OmscMc.aternos.me:30266`',
           '',
-          `• OmscMc`,
-          `╰ 🟢 \`Online\``,
+          '• OmscMc',
+          '╰ 🟢 `Online`',
           `╰ 👥 \`${result.players.online}/${result.players.max}\``
         ].join('\n'),
         timestamp: new Date()
       };
-
-      for (const [id, channel] of textChannels) {
-        channel.send({ embeds: [embed] }).catch(() => {});
-      }
-    } catch (error) {
+      message.channel.send({ embeds: [embed] });
+    } catch (err) {
       const embed = {
         color: 0xff0000,
         title: '🎮 OmscMc',
@@ -51,18 +41,15 @@ async function updateStatus() {
           '`Java IP:` `OmscMc.aternos.me`',
           '`Bedrock IP:` `OmscMc.aternos.me:30266`',
           '',
-          `• OmscMc`,
-          `╰ 🔴 \`Offline\``,
-          `╰ 👥 \`0/?\``
+          '• OmscMc',
+          '╰ 🔴 `Offline`',
+          '╰ 👥 `0/?`'
         ].join('\n'),
         timestamp: new Date()
       };
-
-      for (const [id, channel] of textChannels) {
-        channel.send({ embeds: [embed] }).catch(() => {});
-      }
+      message.channel.send({ embeds: [embed] });
     }
-  });
-}
+  }
+});
 
 client.login(process.env.DISCORD_TOKEN);
